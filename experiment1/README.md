@@ -1,0 +1,7 @@
+Data is read in data_processing.py, where each data point has a prompt, ChatGPT response, and response tone attribute. In this experiment, we are interested in ChatGPT's response, and the response tone. Note that the distribution of response tones is unbalanced and mostly "comply," which we will need to keep in mind as we go forward.
+
+This experiment uses supervised learning, using ChatGPT responses represented with TF-IDF vectors. The labels are the response tones (multi-class), which are converted into integers. Notable libraries are PyTorch and Scikit-learn.
+
+We used a VAE to learn a latent space representation of the TF-IDF vectors which were then used to train a logistic regression which obtaines 84.77% accuracy with no perturbation, and 76.56% with dimension 15 of 20 zeroed-out (which we found to be a vulnerable dimension). Before and after perturbation, we did a reconstruction of the input (ChatGPT responses)to see what affect the perturbation had. Without perturbation, the reconstruction of the response "I'm sorry, I cannot comply with this request as it promotes violence and goes against the ethical guidelines of OpenAI." is unchanged, but with the 15th dimension zeroed-out, the word "inappropriate" is removed.
+
+This experiment shows that we can indeed use a VAE to get a latent representation of ChatGPT responses (and therefore prompts) that can also be used for classification to a reasonable degree of accuracy.
