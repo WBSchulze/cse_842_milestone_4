@@ -6,6 +6,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from data_processing import preprocess_data, split_data
 
+import numpy as np
+import random
+# Set a fixed randomness for reproducibility.
+random_seed = 42
+torch.manual_seed(random_seed)
+np.random.seed(random_seed)
+random.seed(random_seed)
+
 class TransformerVAE(nn.Module):
     def __init__(self, model_name, latent_dim):
         super(TransformerVAE, self).__init__()
@@ -129,13 +137,13 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 # ] * 20  # Ensure you have enough texts
 
 scale = 2
-num_epochs = 100
+num_epochs = 400
 
-i = 4
+i = 8
 texts = X_train[i:i+scale]
 print(texts)
 
-dataset = MyDataset(texts, vae.tokenizer, max_length=8)
+dataset = MyDataset(texts, vae.tokenizer, max_length=32)
 
 # Adjust batch size if necessary
 batch_size = min(scale, len(dataset))  # Ensure batch size is not larger than dataset
@@ -163,14 +171,15 @@ for epoch in range(num_epochs):
     else:
         print(f"Epoch {epoch}, No batches processed")
 
-# Forward pass example
-input_ids, attention_mask = next(iter(dataloader))
-input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
-reconstructed, mu, logvar = vae(input_ids, attention_mask)
+    if epoch % 10 == 0:
+        # Forward pass example
+        input_ids, attention_mask = next(iter(dataloader))
+        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        reconstructed, mu, logvar = vae(input_ids, attention_mask)
 
-# Convert logits to probabilities and tokens
-probabilities = torch.softmax(reconstructed, dim=-1)
-predicted_token_ids = torch.argmax(probabilities, dim=-1)
-predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in predicted_token_ids]
+        # Convert logits to probabilities and tokens
+        probabilities = torch.softmax(reconstructed, dim=-1)
+        predicted_token_ids = torch.argmax(probabilities, dim=-1)
+        predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in predicted_token_ids]
 
-print(predicted_tokens)
+        print(predicted_tokens)
