@@ -121,10 +121,10 @@ device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
 
 model_name = 'bert-base-uncased'
-latent_dim = 256  # Example latent dimension size
+latent_dim = 512  # Example latent dimension size
 vae = TransformerVAE(model_name, latent_dim).to(device)
 
-optimizer = torch.optim.Adam(vae.parameters(), lr=1e-4)
+optimizer = torch.optim.Adam(vae.parameters(), lr=1e-5)
 
 # Load and preprocess labeled refusals into train/val/test.
 X, y = preprocess_data('all_hand_labeled.json', 'response')
@@ -136,21 +136,24 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 #     "I like apples"
 # ] * 20  # Ensure you have enough texts
 
-scale = 2
-num_epochs = 400
+num_epochs = 500
 
-i = 8
-texts = X_train[i:i+scale]
+# Extract all X where y is "rejected"
+texts = [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == "rejected"][:50]
+# filter to short refusals
 print(texts)
+print(len(texts))
 
-dataset = MyDataset(texts, vae.tokenizer, max_length=32)
+dataset = MyDataset(texts, vae.tokenizer, max_length=16)
 
 # Adjust batch size if necessary
-batch_size = min(scale, len(dataset))  # Ensure batch size is not larger than dataset
+batch_size = min(2, len(dataset))  # Ensure batch size is not larger than dataset
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False) 
 
 # Training loop
 for epoch in range(num_epochs):
+    if epoch < 2:
+        print("Starting epoch", epoch)
     epoch_loss = 0.0  # Initialize epoch loss
     num_batches = 0  # Initialize number of batches processed
 
@@ -164,14 +167,14 @@ for epoch in range(num_epochs):
         optimizer.step()
         epoch_loss += loss.item()
 
-    # Avoid division by zero
-    if num_batches > 0:
-        average_loss = epoch_loss / num_batches
-        print(f"Epoch {epoch}, Average Loss: {average_loss}")
-    else:
-        print(f"Epoch {epoch}, No batches processed")
-
     if epoch % 10 == 0:
+        # Avoid division by zero
+        if num_batches > 0:
+            average_loss = epoch_loss / num_batches
+            print(f"Epoch {epoch}, Average Loss: {average_loss}")
+        else:
+            print(f"Epoch {epoch}, No batches processed")
+
         # Forward pass example
         input_ids, attention_mask = next(iter(dataloader))
         input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
@@ -182,4 +185,5 @@ for epoch in range(num_epochs):
         predicted_token_ids = torch.argmax(probabilities, dim=-1)
         predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in predicted_token_ids]
 
+        # Reconstructed text
         print(predicted_tokens)
