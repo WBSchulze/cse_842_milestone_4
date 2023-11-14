@@ -173,43 +173,46 @@ mseLoss = nn.MSELoss()
 # Training loop
 vae.train()
 for epoch in range(num_epochs):
-    if epoch < 2:
-        print("Starting epoch", epoch)
-    epoch_loss = 0.0  # Initialize epoch loss
-    num_batches = 0  # Initialize numberof batches processed
+    try:
+        if epoch < 2:
+            print("Starting epoch", epoch)
+        epoch_loss = 0.0  # Initialize epoch loss
+        num_batches = 0  # Initialize numberof batches processed
 
-    for input_ids, attention_mask, rejected in dataloader:
-        num_batches += 1
-        input_ids, attention_mask, rejected = input_ids.to(device), attention_mask.to(device), rejected.to(device)
-        optimizer.zero_grad()
+        for input_ids, attention_mask, rejected in dataloader:
+            num_batches += 1
+            input_ids, attention_mask, rejected = input_ids.to(device), attention_mask.to(device), rejected.to(device)
+            optimizer.zero_grad()
+            reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
+            loss = vae.vae_loss(reconstructed, input_ids, mu, logvar)
+            loss += mseLoss( rejected, classification)
+            epoch_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+            
+
+        # if epoch % 10 == 0:
+        # Avoid division by zero
+        if num_batches > 0:
+            average_loss = epoch_loss / num_batches
+            print(f"Epoch {epoch}, Average Loss: {average_loss}")
+        else:
+            print(f"Epoch {epoch}, No batches processed")
+
+        # Forward pass example
+        input_ids, attention_mask, rejected = next(iter(dataloader))
+        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
         reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
-        loss = vae.vae_loss(reconstructed, input_ids, mu, logvar)
-        loss += mseLoss( rejected, classification)
-        epoch_loss += loss.item()
-        loss.backward()
-        optimizer.step()
-        
 
-    # if epoch % 10 == 0:
-    # Avoid division by zero
-    if num_batches > 0:
-        average_loss = epoch_loss / num_batches
-        print(f"Epoch {epoch}, Average Loss: {average_loss}")
-    else:
-        print(f"Epoch {epoch}, No batches processed")
+        # Convert logits to probabilities and tokens
+        tokens = vae.logits_to_tokens( reconstructed )
+        predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
 
-    # Forward pass example
-    input_ids, attention_mask, rejected = next(iter(dataloader))
-    import pdb; pdb.set_trace()
-    input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
-    reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
+        # Reconstructed text
+        print(predicted_tokens)
 
-    # Convert logits to probabilities and tokens
-    tokens = vae.logits_to_tokens( reconstructed )
-    predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
-
-    # Reconstructed text
-    print(predicted_tokens)
-
-    # Predicted classification
-    print( f"Expected class: {rejected}, Got class: {classification}")
+        # Predicted classification
+        print( f"Expected class: {rejected}, Got class: {classification}")
+    except KeyboardInterrupt as e:
+        print( "WBS: Program interrupted, dropping to debug console.  Type 'c' to resume.")
+        import pdb; pdb.set_trace()
