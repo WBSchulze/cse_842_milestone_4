@@ -27,13 +27,18 @@ class TransformerVAE(nn.Module):
         # Add a linear layer to map hidden states to the vocabulary size
         self.linear_layer = nn.Linear(self.encoder.config.hidden_size, self.tokenizer.vocab_size)
 
+        # 1 dimension: rejected or not
+        self.rejection_classifier = nn.Linear( latent_dim, 1 )
+        self.sigmoid = nn.Sigmoid()
+
         # Decoder can be another transformer or a different architecture
         self.decoder = AutoModel.from_pretrained(model_name)
 
     def encode(self, input_ids, attention_mask):
         encoded = self.encoder(input_ids, attention_mask=attention_mask)[0]
-        mu = self.fc_mu(encoded)
-        logvar = self.fc_logvar(encoded)
+        cls_encoded = encoded[:,0,:]
+        mu = self.fc_mu(cls_encoded)
+        logvar = self.fc_logvar(cls_encoded)
         return mu, logvar
 
     def reparameterize(self, mu, logvar):
@@ -44,27 +49,38 @@ class TransformerVAE(nn.Module):
     def decode(self, z, input_seq_len):
         generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
 
+        logits = None
         # Adjust loop to generate tokens up to input_seq_len
         for _ in range(input_seq_len - 1):  # Adjust for the [CLS] token
             if generated.size(1) == input_seq_len:  # Stop if sequence length is reached
                 break
             outputs = self.decoder(input_ids=generated, encoder_hidden_states=z)
             hidden_states = outputs.last_hidden_state
-            next_token_logits = self.linear_layer(hidden_states[:, -1, :])
-            next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
+            next_token_logits = self.linear_layer(hidden_states[:, -1, :]).unsqueeze( 1 )
+            next_token = torch.argmax(next_token_logits, dim=-1)
             generated = torch.cat((generated, next_token), dim=-1)
+            if logits is None:
+                logits = next_token_logits # Dimensions: batch, token, vocabulary
+            else:
+                logits = torch.cat( ( logits, next_token_logits ), dim = 1 ) 
 
-        logits = self.linear_layer(hidden_states[:, :input_seq_len, :])
-        return logits
+        if self.training:
+            logits_prob = torch.softmax(logits, dim=2)
+        return logits_prob
 
+
+    def logits_to_tokens( self, logits ):
+        return torch.argmax( logits, dim=2)
+        
 
     def forward(self, input_ids, attention_mask):
         #print("Shape of input_ids in forward:", input_ids.shape)  # Add this line
         mu, logvar = self.encode(input_ids, attention_mask)
         z = self.reparameterize(mu, logvar)
+        rejected = self.sigmoid(self.rejection_classifier( z ))
         input_seq_len = input_ids.size(1)
         reconstructed = self.decode(z, input_seq_len)
-        return reconstructed, mu, logvar
+        return reconstructed, mu, logvar, rejected
 
     
     def to(self, device):
@@ -74,6 +90,7 @@ class TransformerVAE(nn.Module):
         self.fc_mu.to(device)
         self.fc_logvar.to(device)
         self.linear_layer.to(device)  # Don't forget to move this layer as well
+        self.rejection_classifier.to(device)
         return self
 
     def vae_loss(self, reconstructed, input_ids, mu, logvar):
@@ -101,10 +118,10 @@ class TransformerVAE(nn.Module):
         return recon_loss + kl_div
 
 
-
 class MyDataset(Dataset):
-    def __init__(self, texts, tokenizer, max_length):
+    def __init__(self, texts, rejected, tokenizer, max_length):
         self.texts = texts
+        self.rejected = rejected
         self.tokenizer = tokenizer
         self.max_length = max_length
 
@@ -114,7 +131,7 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         text = self.texts[idx]
         inputs = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.max_length, return_tensors="pt")
-        return inputs.input_ids.squeeze(0), inputs.attention_mask.squeeze(0)
+        return inputs.input_ids.squeeze(0), inputs.attention_mask.squeeze(0), self.rejected[idx]
 
 # Check if MPS is available and use it; otherwise, use CPU
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -138,52 +155,61 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
 num_epochs = 500
 
-# Extract all X where y is "rejected"
-texts = [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == "rejected"][:50]
+# Extract all X where y is rejected
+texts = X_train[:]
+classes = torch.tensor( y_train ).float().reshape( ( -1, 1 ) )
 # filter to short refusals
-print(texts)
-print(len(texts))
+print(f"{len(texts)} texts, example: {texts[0]}")
 
-dataset = MyDataset(texts, vae.tokenizer, max_length=16)
+
+dataset = MyDataset(texts, classes, vae.tokenizer, max_length=16)
 
 # Adjust batch size if necessary
 batch_size = min(2, len(dataset))  # Ensure batch size is not larger than dataset
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False) 
 
+mseLoss = nn.MSELoss()
+
 # Training loop
+vae.train()
 for epoch in range(num_epochs):
     if epoch < 2:
         print("Starting epoch", epoch)
     epoch_loss = 0.0  # Initialize epoch loss
-    num_batches = 0  # Initialize number of batches processed
+    num_batches = 0  # Initialize numberof batches processed
 
-    for input_ids, attention_mask in dataloader:
+    for input_ids, attention_mask, rejected in dataloader:
         num_batches += 1
-        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        input_ids, attention_mask, rejected = input_ids.to(device), attention_mask.to(device), rejected.to(device)
         optimizer.zero_grad()
-        reconstructed, mu, logvar = vae(input_ids, attention_mask)
+        reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
         loss = vae.vae_loss(reconstructed, input_ids, mu, logvar)
+        loss += mseLoss( rejected, classification)
+        epoch_loss += loss.item()
         loss.backward()
         optimizer.step()
-        epoch_loss += loss.item()
+        
 
-    if epoch % 10 == 0:
-        # Avoid division by zero
-        if num_batches > 0:
-            average_loss = epoch_loss / num_batches
-            print(f"Epoch {epoch}, Average Loss: {average_loss}")
-        else:
-            print(f"Epoch {epoch}, No batches processed")
+    # if epoch % 10 == 0:
+    # Avoid division by zero
+    if num_batches > 0:
+        average_loss = epoch_loss / num_batches
+        print(f"Epoch {epoch}, Average Loss: {average_loss}")
+    else:
+        print(f"Epoch {epoch}, No batches processed")
 
-        # Forward pass example
-        input_ids, attention_mask = next(iter(dataloader))
-        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
-        reconstructed, mu, logvar = vae(input_ids, attention_mask)
+    # Forward pass example
+    input_ids, attention_mask, rejected = next(iter(dataloader))
+    import pdb; pdb.set_trace()
+    input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+    reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
 
-        # Convert logits to probabilities and tokens
-        probabilities = torch.softmax(reconstructed, dim=-1)
-        predicted_token_ids = torch.argmax(probabilities, dim=-1)
-        predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in predicted_token_ids]
+    # Convert logits to probabilities and tokens
+    tokens = vae.logits_to_tokens( reconstructed )
+    predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
 
-        # Reconstructed text
-        print(predicted_tokens)
+    # Reconstructed text
+    print(predicted_tokens)
+
+    # Predicted classification
+    print( f"Expected class: {rejected}, Got class: {classification}")
