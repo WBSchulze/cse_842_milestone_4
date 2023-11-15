@@ -51,24 +51,41 @@ class TransformerVAE(nn.Module):
     def decode(self, z, input_seq_len):
         generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
 
-        logits = None
         # Adjust loop to generate tokens up to input_seq_len
         for _ in range(input_seq_len - 1):  # Adjust for the [CLS] token
             if generated.size(1) == input_seq_len:  # Stop if sequence length is reached
                 break
             outputs = self.decoder(input_ids=generated, encoder_hidden_states=z)
             hidden_states = outputs.last_hidden_state
-            next_token_logits = self.linear_layer(hidden_states[:, -1, :]).unsqueeze( 1 )
-            next_token = torch.argmax(next_token_logits, dim=-1)
+            next_token_logits = self.linear_layer(hidden_states[:, -1, :])
+            next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
             generated = torch.cat((generated, next_token), dim=-1)
-            if logits is None:
-                logits = next_token_logits # Dimensions: batch, token, vocabulary
-            else:
-                logits = torch.cat( ( logits, next_token_logits ), dim = 1 ) 
 
-        if self.training:
-            logits_prob = torch.softmax(logits, dim=2)
-        return logits_prob
+        logits = self.linear_layer(hidden_states[:, :input_seq_len, :])
+        return logits
+
+
+    # def decode(self, z, input_seq_len):
+    #     generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
+
+    #     logits = None
+    #     # Adjust loop to generate tokens up to input_seq_len
+    #     for _ in range(input_seq_len - 1):  # Adjust for the [CLS] token
+    #         if generated.size(1) == input_seq_len:  # Stop if sequence length is reached
+    #             break
+    #         outputs = self.decoder(input_ids=generated, encoder_hidden_states=z)
+    #         hidden_states = outputs.last_hidden_state
+    #         next_token_logits = self.linear_layer(hidden_states[:, -1, :]).unsqueeze( 1 )
+    #         next_token = torch.argmax(next_token_logits, dim=-1)
+    #         generated = torch.cat((generated, next_token), dim=-1)
+    #         if logits is None:
+    #             logits = next_token_logits # Dimensions: batch, token, vocabulary
+    #         else:
+    #             logits = torch.cat( ( logits, next_token_logits ), dim = 1 ) 
+
+    #     if self.training:
+    #         logits_prob = torch.softmax(logits, dim=2)
+    #     return logits_prob
 
 
     def logits_to_tokens( self, logits ):
@@ -157,7 +174,7 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
 num_epochs = 500
 
-texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:10]
+texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:3]
 classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 # Use this for thorough training with both classes (hard)
@@ -182,6 +199,11 @@ recon_losses = []
 kl_divergences = []
 bce_losses = []
 
+# Define scaling weights
+alpha = 0.5  # Weight for reconstruction loss
+beta = 27/2   # Weight for KL divergence
+gamma = 415/2  # Weight for classification loss
+
 # Training loop
 vae.train()
 for epoch in range(num_epochs):
@@ -200,17 +222,17 @@ for epoch in range(num_epochs):
             reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
             recon_loss, kl_div = vae.vae_loss(reconstructed, input_ids, mu, logvar)
             classification_loss = bceLoss(classification, rejected)
-            total_loss = recon_loss + kl_div + classification_loss
+            total_loss = alpha * recon_loss + beta * kl_div + gamma * classification_loss
 
             total_loss.backward()
             optimizer.step()
 
-            epoch_recon_loss += recon_loss.item()
-            epoch_kl_div += kl_div.item()
-            epoch_bce_loss += classification_loss.item()
+            epoch_recon_loss += recon_loss.item() * alpha
+            epoch_kl_div += kl_div.item() * beta
+            epoch_bce_loss += classification_loss.item() * gamma
 
         if epoch > 0:
-            print(f"Epoch {epoch + 1:3}, Recon Loss: {recon_losses[-1]/num_batches:10.4f}, KL Div: {kl_divergences[-1]/num_batches:10.4f}, MSE Loss: {bce_losses[-1]/num_batches:10.4f}")
+            print(f"Epoch {epoch + 1:3},          Recon Loss: {recon_losses[-1]/num_batches:10.4f}, KL Div: {kl_divergences[-1]/num_batches:10.4f}, BCE Loss: {bce_losses[-1]/num_batches:10.4f}")
 
         # if epoch % 10 == 0:
         # Avoid division by zero
@@ -236,11 +258,11 @@ for epoch in range(num_epochs):
         correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
 
         # Reconstructed text
-        print(f"Correct text:     { ' '.join( correct_tokens[0] ) }") 
-        print(f"Predicted tokens: { ' '.join( predicted_tokens[0] ) }" )
+        print(f"Correct text:       { ' '.join( correct_tokens[0] ) }") 
+        print(f"Predicted text:     { ' '.join( predicted_tokens[0] ) }" )
 
         # Predicted classification
-        print( f"Expected class:   {rejected.item()}, Got class: {classification.item()}")
+        print(f"Classification was: {'CORRECT' if (classification.item() > 0.5 and rejected.item() == 1) or (classification.item() < 0.5 and rejected.item() == 0) else 'INCORRECT'} (Expected class:   {rejected.item()}, Got class: {classification.item()})")
 
         # Store losses for plotting
         recon_losses.append(epoch_recon_loss / num_batches)
