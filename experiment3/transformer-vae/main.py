@@ -155,12 +155,20 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
 num_epochs = 500
 
-# Extract all X where y is rejected
-texts = X_train[:]
-classes = torch.tensor( y_train ).float().reshape( ( -1, 1 ) )
+#------------------------------------------------
+# Use this for quick training with only refusals (easy)
+#------------------------------------------------
+texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:50]
+classes = [ 1 ] * 50
+#------------------------------------------------
+# Use this for thorough training with both classes (hard)
+#------------------------------------------------
+# texts = X_train[:]
+# classes = torch.tensor( y_train ).float().reshape( ( -1, 1 ) )
+#------------------------------------------------
+
 # filter to short refusals
 print(f"{len(texts)} texts, example: {texts[0]}")
-
 
 dataset = MyDataset(texts, classes, vae.tokenizer, max_length=16)
 
