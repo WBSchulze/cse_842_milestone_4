@@ -48,21 +48,35 @@ class TransformerVAE(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def decode(self, z, input_seq_len):
+    def decode(self, z, input_seq_len, temperature=1.0):
         generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
-
-        # Adjust loop to generate tokens up to input_seq_len
-        for _ in range(input_seq_len - 1):  # Adjust for the [CLS] token
-            if generated.size(1) == input_seq_len:  # Stop if sequence length is reached
-                break
+        for _ in range(input_seq_len - 1):
             outputs = self.decoder(input_ids=generated, encoder_hidden_states=z)
             hidden_states = outputs.last_hidden_state
             next_token_logits = self.linear_layer(hidden_states[:, -1, :])
-            next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
+            next_token_logits = next_token_logits / temperature  # Apply temperature
+            probabilities = F.softmax(next_token_logits, dim=-1)
+            next_token = torch.multinomial(probabilities, 1)  # Sample from the probability distribution
             generated = torch.cat((generated, next_token), dim=-1)
-
         logits = self.linear_layer(hidden_states[:, :input_seq_len, :])
         return logits
+
+
+    # def decode(self, z, input_seq_len):
+    #     generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
+
+    #     # Adjust loop to generate tokens up to input_seq_len
+    #     for _ in range(input_seq_len - 1):  # Adjust for the [CLS] token
+    #         if generated.size(1) == input_seq_len:  # Stop if sequence length is reached
+    #             break
+    #         outputs = self.decoder(input_ids=generated, encoder_hidden_states=z)
+    #         hidden_states = outputs.last_hidden_state
+    #         next_token_logits = self.linear_layer(hidden_states[:, -1, :])
+    #         next_token = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
+    #         generated = torch.cat((generated, next_token), dim=-1)
+
+    #     logits = self.linear_layer(hidden_states[:, :input_seq_len, :])
+    #     return logits
 
 
     # def decode(self, z, input_seq_len):
@@ -98,7 +112,10 @@ class TransformerVAE(nn.Module):
         z = self.reparameterize(mu, logvar)
         rejected = self.sigmoid(self.rejection_classifier( z ))
         input_seq_len = input_ids.size(1)
-        reconstructed = self.decode(z, input_seq_len)
+        #reconstructed = self.decode(z, input_seq_len)
+        # During training, when calling the decode method
+        reconstructed = self.decode(z, input_seq_len, temperature=0.7)  # Example temperature
+
         return reconstructed, mu, logvar, rejected
 
     
@@ -172,9 +189,9 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 #     "I like apples"
 # ] * 20  # Ensure you have enough texts
 
-num_epochs = 500
+num_epochs = 2000
 
-texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:3]
+texts =   [X_train[i][25:89] for i in range(len(X_train))][:3] #if y_train[i] == 1][:3]
 classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 # Use this for thorough training with both classes (hard)
@@ -203,6 +220,10 @@ bce_losses = []
 alpha = 0.5  # Weight for reconstruction loss
 beta = 27/2   # Weight for KL divergence
 gamma = 415/2  # Weight for classification loss
+
+# Increment beta after a certain number of epochs
+beta_increment = 27/2 * 0.05
+annealing_interval = 10  # Increment beta every 10 epochs
 
 # Training loop
 vae.train()
@@ -305,6 +326,10 @@ for epoch in range(num_epochs):
         plt.close()
 
         print()
+
+        # Update beta at the specified interval
+        if (epoch + 1) % annealing_interval == 0:
+            beta = min(beta + beta_increment, 27/2 * 2)  # Ensure beta does not exceed 1
 
 
     except KeyboardInterrupt as e:
