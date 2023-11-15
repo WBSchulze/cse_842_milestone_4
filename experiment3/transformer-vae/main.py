@@ -159,7 +159,7 @@ num_epochs = 500
 # Use this for quick training with only refusals (easy)
 #------------------------------------------------
 texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:50]
-classes = [ 1 ] * 50
+classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 # Use this for thorough training with both classes (hard)
 #------------------------------------------------
