@@ -209,18 +209,24 @@ for epoch in range(num_epochs):
 
         # Forward pass example
         input_ids, attention_mask, rejected = next(iter(dataloader))
-        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        # Dataloader gives us a batch but we just want one sample for now.
+        input_ids, attention_mask, rejected = ( input_ids[:1].to(device), 
+                                                attention_mask[:1].to(device), 
+                                                rejected[:1].to(device) )
         reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
 
         # Convert logits to probabilities and tokens
         tokens = vae.logits_to_tokens( reconstructed )
+        
         predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
+        correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
 
         # Reconstructed text
-        print(predicted_tokens)
+        print(f"Correct text: { ' '.join( correct_tokens[0] ) }") 
+        print(f"Predicted tokens: { ' '.join( predicted_tokens[0] ) }" )
 
         # Predicted classification
-        print( f"Expected class: {rejected}, Got class: {classification}")
+        print( f"Expected class: {rejected.item()}, Got class: {classification.item()}")
     except KeyboardInterrupt as e:
         print( "WBS: Program interrupted, dropping to debug console.  Type 'c' to resume.")
         import pdb; pdb.set_trace()
