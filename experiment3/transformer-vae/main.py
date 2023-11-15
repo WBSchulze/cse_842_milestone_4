@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
+from torch.nn import BCELoss
 
 from data_processing import preprocess_data, split_data
 
@@ -115,7 +117,7 @@ class TransformerVAE(nn.Module):
 
         # KL divergence
         kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        return recon_loss + kl_div
+        return recon_loss, kl_div
 
 
 class MyDataset(Dataset):
@@ -155,10 +157,7 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 
 num_epochs = 500
 
-#------------------------------------------------
-# Use this for quick training with only refusals (easy)
-#------------------------------------------------
-texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:50]
+texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:10]
 classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 # Use this for thorough training with both classes (hard)
@@ -176,36 +175,51 @@ dataset = MyDataset(texts, classes, vae.tokenizer, max_length=16)
 batch_size = min(2, len(dataset))  # Ensure batch size is not larger than dataset
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False) 
 
-mseLoss = nn.MSELoss()
+bceLoss = BCELoss()
+
+# Initialize lists to store losses for plotting
+recon_losses = []
+kl_divergences = []
+bce_losses = []
 
 # Training loop
 vae.train()
 for epoch in range(num_epochs):
     try:
-        if epoch < 2:
-            print("Starting epoch", epoch)
         epoch_loss = 0.0  # Initialize epoch loss
+        epoch_recon_loss = 0.0
+        epoch_kl_div = 0.0
+        epoch_bce_loss = 0.0
         num_batches = 0  # Initialize numberof batches processed
 
         for input_ids, attention_mask, rejected in dataloader:
             num_batches += 1
             input_ids, attention_mask, rejected = input_ids.to(device), attention_mask.to(device), rejected.to(device)
             optimizer.zero_grad()
+
             reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
-            loss = vae.vae_loss(reconstructed, input_ids, mu, logvar)
-            loss += mseLoss( rejected, classification)
-            epoch_loss += loss.item()
-            loss.backward()
+            recon_loss, kl_div = vae.vae_loss(reconstructed, input_ids, mu, logvar)
+            classification_loss = bceLoss(classification, rejected)
+            total_loss = recon_loss + kl_div + classification_loss
+
+            total_loss.backward()
             optimizer.step()
-            
+
+            epoch_recon_loss += recon_loss.item()
+            epoch_kl_div += kl_div.item()
+            epoch_bce_loss += classification_loss.item()
+
+        if epoch > 0:
+            print(f"Epoch {epoch + 1:3}, Recon Loss: {recon_losses[-1]/num_batches:10.4f}, KL Div: {kl_divergences[-1]/num_batches:10.4f}, MSE Loss: {bce_losses[-1]/num_batches:10.4f}")
 
         # if epoch % 10 == 0:
         # Avoid division by zero
         if num_batches > 0:
             average_loss = epoch_loss / num_batches
-            print(f"Epoch {epoch}, Average Loss: {average_loss}")
+            #print(f"Epoch {epoch}, Average Loss: {average_loss}")
         else:
-            print(f"Epoch {epoch}, No batches processed")
+            pass
+            #print(f"Epoch {epoch}, No batches processed")
 
         # Forward pass example
         input_ids, attention_mask, rejected = next(iter(dataloader))
@@ -222,11 +236,55 @@ for epoch in range(num_epochs):
         correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
 
         # Reconstructed text
-        print(f"Correct text: { ' '.join( correct_tokens[0] ) }") 
+        print(f"Correct text:     { ' '.join( correct_tokens[0] ) }") 
         print(f"Predicted tokens: { ' '.join( predicted_tokens[0] ) }" )
 
         # Predicted classification
-        print( f"Expected class: {rejected.item()}, Got class: {classification.item()}")
+        print( f"Expected class:   {rejected.item()}, Got class: {classification.item()}")
+
+        # Store losses for plotting
+        recon_losses.append(epoch_recon_loss / num_batches)
+        kl_divergences.append(epoch_kl_div / num_batches)
+        bce_losses.append(epoch_bce_loss / num_batches)
+
+        # Plotting and saving graphs
+        epochs = range(1, epoch + 2)
+        
+        # After each epoch, plot all three losses in one image
+        plt.figure(figsize=(10, 8))
+
+        # First subplot for Binary Cross-Entropy Loss
+        plt.subplot(2, 1, 1)
+        plt.plot(epochs, recon_losses, label='Reconstruction Binary Cross-Entropy Loss', color='blue')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.title('Reconstruction Loss during Training')
+        plt.legend()
+
+        # Second subplot for KL Divergence Loss
+        plt.subplot(2, 2, 3)
+        plt.plot(epochs, kl_divergences, label='KL Divergence Loss', color='red')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.title('KL Divergence Loss during Training')
+        plt.legend()
+
+        # Third subplot for classification BCE Loss
+        plt.subplot(2, 2, 4)
+        plt.plot(epochs, bce_losses, label='Classification Binary Cross-Entropy', color='green')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.title('Classification BCE Loss during Training')
+        plt.legend()
+
+        # Save the figure
+        plt.tight_layout()
+        plt.savefig(f'all_losses.png')
+        plt.close()
+
+        print()
+
+
     except KeyboardInterrupt as e:
         print( "WBS: Program interrupted, dropping to debug console.  Type 'c' to resume.")
         import pdb; pdb.set_trace()
