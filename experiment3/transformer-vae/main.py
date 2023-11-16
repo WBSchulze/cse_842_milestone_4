@@ -16,7 +16,7 @@ torch.manual_seed(random_seed)
 np.random.seed(random_seed)
 random.seed(random_seed)
 
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 10000
 
 class TransformerVAE(nn.Module):
     def __init__(self, model_name, latent_dim):
@@ -50,31 +50,31 @@ class TransformerVAE(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def decode_train(self, z, input_seq ):
-        # Adjust loop to generate tokens up to input_seq_len
-        nBatches = input_seq.shape[0]
-        batchLength = input_seq.shape[1]
-        attention_masks = torch.triu( torch.ones( batchLength, batchLength ) ).T
-        out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
-        for iToken in range( batchLength ):
-            attention_mask = attention_masks[iToken].unsqueeze(0)
-            outputs = self.decoder( input_ids = input_seq, encoder_hidden_states = z, 
-                                    attention_mask = attention_mask ).last_hidden_state
-            token_weights = self.linear_layer(outputs[:,iToken,:])            
-            out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
+    # def decode_train(self, z, input_seq ):
+    #     # Adjust loop to generate tokens up to input_seq_len
+    #     nBatches = input_seq.shape[0]
+    #     batchLength = input_seq.shape[1]
+    #     attention_masks = torch.triu( torch.ones( batchLength, batchLength ) )
+    #     out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
+    #     for iToken in range( batchLength ):
+    #         attention_mask = attention_masks[iToken].unsqueeze(0)
+    #         outputs = self.decoder( input_ids = input_seq, encoder_hidden_states = z, 
+    #                                 attention_mask = attention_mask ).last_hidden_state
+    #         token_weights = self.linear_layer(outputs[:,iToken,:])            
+    #         out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
             
-        return out_logits
+    #     return out_logits
     
-    def decode_train2(self, z, input_seq ):
-        nBatches = input_seq.shape[0]
-        batchLength = input_seq.shape[1]
-        out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
-        for iToken in range( batchLength ):
-            outputs = self.decoder( input_ids = input_seq[:iToken + 1], encoder_hidden_states = z ).last_hidden_state
-            token_weights = self.linear_layer(outputs[:,iToken,:])            
-            out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
+    # def decode_train2(self, z, input_seq ):
+    #     nBatches = input_seq.shape[0]
+    #     batchLength = input_seq.shape[1]
+    #     out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
+    #     for iToken in range( batchLength ):
+    #         outputs = self.decoder( input_ids = input_seq[:iToken + 1], encoder_hidden_states = z ).last_hidden_state
+    #         token_weights = self.linear_layer(outputs[:,iToken,:])            
+    #         out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
             
-        return out_logits
+    #     return out_logits
     
     def decode_train_parallel(self, z, input_seq ):
         batchLength = input_seq.shape[1]
@@ -82,8 +82,7 @@ class TransformerVAE(nn.Module):
         attention_masks = attention_masks.unsqueeze( 0 )
         outputs = self.decoder( input_ids = input_seq, encoder_hidden_states = z, 
                                 attention_mask = attention_masks ).last_hidden_state
-        token_weights = self.linear_layer(outputs)
-        token_logits = torch.softmax( token_weights, dim = -1 )         
+        token_logits = self.linear_layer(outputs)
            
         return token_logits
 
@@ -131,7 +130,13 @@ class TransformerVAE(nn.Module):
         mu, logvar = self.encode(input_ids, attention_mask)
         z = self.reparameterize(mu, logvar)
         rejected = self.sigmoid(self.rejection_classifier( z ))
-        reconstructed = self.decode_infer( z, input_ids.size(1) )
+        if self.training:
+            # For fast training, if it works:
+            # reconstructed = self.decode_train_parallel( z, input_ids )
+            # For testing that both modes are legitimate:
+            reconstructed = self.decode_infer( z, input_ids.size(1) )
+        else:
+            reconstructed = self.decode_infer( z, input_ids.size(1) )
         return reconstructed, mu, logvar, rejected
 
     
@@ -165,7 +170,7 @@ class TransformerVAE(nn.Module):
         # KL divergence
         kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         print( f"KL Div Loss: {kl_div}")
-        # kl_div = 0
+        kl_div *= 0.01
         return recon_loss + kl_div
 
 
@@ -253,7 +258,7 @@ for epoch in range(NUM_EPOCHS):
 
         if num_batches > 0:
             average_loss = epoch_loss / num_batches
-            print(f"Epoch {epoch}, Average Loss: {average_loss:.4f}, Time taken: {epochTime}")
+            print(f"\nEpoch {epoch}, Average Loss: {average_loss:.4f}, Time taken: {epochTime}")
         else:
             print(f"Epoch {epoch}, No batches processed")
         
@@ -264,19 +269,25 @@ for epoch in range(NUM_EPOCHS):
         input_ids, attention_mask, rejected = ( input_ids[:1].to(device), 
                                                 attention_mask[:1].to(device), 
                                                 rejected[:1].to(device) )
+        correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
+        print(f"Correct tokens:   { ' '.join( correct_tokens[0] ) }") 
+        
+        # See the result of encoding and decoding in TRAINING mode.
+        vae.train()
         reconstructed, _, _, classification = vae(input_ids, attention_mask)
-
-        # Convert logits to probabilities and tokens
         tokens = vae.logits_to_tokens( reconstructed )
         predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
-        correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
-
-        # Reconstructed text
-        print(f"Correct tokens:   { ' '.join( correct_tokens[0] ) }") 
-        print(f"Predicted (eval) tokens: { ' '.join( predicted_tokens[0] ) }" )
-
+        print(f"Predicted (train) tokens: { ' '.join( predicted_tokens[0] ) }" )
+        # See the result of encoding and decoding in EVAL (non-training) mode.
+        vae.eval()
+        reconstructed2, _, _, classification2 = vae(input_ids, attention_mask)
+        tokens2 = vae.logits_to_tokens( reconstructed2 )
+        predicted_tokens2 = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens2]
+        print(f"Predicted (eval) tokens:  { ' '.join( predicted_tokens2[0] ) }" )
+        vae.train()
+        
         # Predicted classification
-        print( f"Expected class: {rejected.item()}, Got class: {classification.item():.4f}")
+        print( f"Class: Expected {rejected.item()}, Training {classification.item():.2f}, Eval {classification2.item():.2f}")
     except KeyboardInterrupt as e:
         print( "WBS: Program interrupted, dropping to debug console.  Type 'c' to resume.")
         import pdb; pdb.set_trace()
