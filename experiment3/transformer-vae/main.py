@@ -50,32 +50,6 @@ class TransformerVAE(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    # def decode_train(self, z, input_seq ):
-    #     # Adjust loop to generate tokens up to input_seq_len
-    #     nBatches = input_seq.shape[0]
-    #     batchLength = input_seq.shape[1]
-    #     attention_masks = torch.triu( torch.ones( batchLength, batchLength ) )
-    #     out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
-    #     for iToken in range( batchLength ):
-    #         attention_mask = attention_masks[iToken].unsqueeze(0)
-    #         outputs = self.decoder( input_ids = input_seq, encoder_hidden_states = z, 
-    #                                 attention_mask = attention_mask ).last_hidden_state
-    #         token_weights = self.linear_layer(outputs[:,iToken,:])            
-    #         out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
-            
-    #     return out_logits
-    
-    # def decode_train2(self, z, input_seq ):
-    #     nBatches = input_seq.shape[0]
-    #     batchLength = input_seq.shape[1]
-    #     out_logits = torch.zeros( ( nBatches, batchLength, self.linear_layer.out_features ) )
-    #     for iToken in range( batchLength ):
-    #         outputs = self.decoder( input_ids = input_seq[:iToken + 1], encoder_hidden_states = z ).last_hidden_state
-    #         token_weights = self.linear_layer(outputs[:,iToken,:])            
-    #         out_logits[:,iToken,:] = torch.softmax( token_weights, dim = -1 )
-            
-    #     return out_logits
-    
     def decode_train_parallel(self, z, input_seq ):
         batchLength = input_seq.shape[1]
         attention_masks = torch.triu( torch.ones( batchLength, batchLength ) ).T
@@ -103,6 +77,7 @@ class TransformerVAE(nn.Module):
         
         return logits
     
+
     # def decode_old( self, z, input_seq_len ):
     #     generated = torch.full((z.size(0), 1), self.tokenizer.cls_token_id, dtype=torch.long, device=z.device)
 
@@ -122,7 +97,7 @@ class TransformerVAE(nn.Module):
 
 
     def logits_to_tokens( self, logits ):
-        return torch.argmax( logits, dim=2 )
+        return torch.argmax( logits, dim=-1 )
         
 
     def forward(self, input_ids, attention_mask):
@@ -132,9 +107,9 @@ class TransformerVAE(nn.Module):
         rejected = self.sigmoid(self.rejection_classifier( z ))
         if self.training:
             # For fast training, if it works:
-            # reconstructed = self.decode_train_parallel( z, input_ids )
+            reconstructed = self.decode_train_parallel( z, input_ids )
             # For testing that both modes are legitimate:
-            reconstructed = self.decode_infer( z, input_ids.size(1) )
+            # reconstructed = self.decode_infer( z, input_ids.size(1) )
         else:
             reconstructed = self.decode_infer( z, input_ids.size(1) )
         return reconstructed, mu, logvar, rejected
@@ -165,12 +140,9 @@ class TransformerVAE(nn.Module):
             input_ids.reshape(-1),  # [batch_size * seq_len]
             reduction='sum'
         )
-        print( f"Recon loss: {recon_loss}")
 
         # KL divergence
         kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        print( f"KL Div Loss: {kl_div}")
-        kl_div *= 0.01
         return recon_loss + kl_div
 
 
@@ -189,6 +161,7 @@ class MyDataset(Dataset):
         inputs = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.max_length, return_tensors="pt")
         return inputs.input_ids.squeeze(0), inputs.attention_mask.squeeze(0), self.rejected[idx]
 
+
 # Check if MPS is available and use it; otherwise, use CPU
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
@@ -197,7 +170,7 @@ model_name = 'bert-base-uncased'
 latent_dim = 512  # Example latent dimension size
 vae = TransformerVAE(model_name, latent_dim).to(device)
 
-optimizer = torch.optim.Adam(vae.parameters(), lr=1e-1)
+optimizer = torch.optim.Adam(vae.parameters(), lr=1e-2)
 
 # Load and preprocess labeled refusals into train/val/test.
 X, y = preprocess_data('all_hand_labeled.json', 'response')
@@ -206,8 +179,8 @@ X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 #------------------------------------------------
 # Use this for quick training with only refusals (easy)
 #------------------------------------------------
-texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1][:2]
-classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
+texts =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1]
+classes = torch.tensor( [ 1. ] * len( texts ) ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 # Use this for thorough training with both classes (hard)
 #------------------------------------------------
@@ -245,25 +218,23 @@ for epoch in range(NUM_EPOCHS):
             reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
             loss = vae.vae_loss(reconstructed, target_ids, mu, logvar)
             classLoss = mseLoss( rejected, classification)
-            print( f"Classification loss: {classLoss}")
             loss += classLoss
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
         
-        # if epoch % 10 == 0:
-        # Avoid division by zero
         epochTime = datetime.datetime.now() - epochStartTime
         epochStartTime = datetime.datetime.now()
-
+        
+        # Avoid division by zero
         if num_batches > 0:
             average_loss = epoch_loss / num_batches
             print(f"\nEpoch {epoch}, Average Loss: {average_loss:.4f}, Time taken: {epochTime}")
         else:
             print(f"Epoch {epoch}, No batches processed")
         
-        
         # Forward pass example
+        #---------------------------------------------------------------------------
         input_ids, attention_mask, rejected = next(iter(dataloader))
         # Dataloader gives us a batch but we just want one sample for now.
         input_ids, attention_mask, rejected = ( input_ids[:1].to(device), 
@@ -272,22 +243,28 @@ for epoch in range(NUM_EPOCHS):
         correct_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
         print(f"Correct tokens:   { ' '.join( correct_tokens[0] ) }") 
         
+        mu, logvar = vae.encode(input_ids, attention_mask)
+        z = vae.reparameterize(mu, logvar)
+        rejected = vae.sigmoid(vae.rejection_classifier( z ))
+
         # See the result of encoding and decoding in TRAINING mode.
-        vae.train()
-        reconstructed, _, _, classification = vae(input_ids, attention_mask)
+        # vae.train()
+        reconstructed = vae.decode_train_parallel( z, input_ids )
         tokens = vae.logits_to_tokens( reconstructed )
         predicted_tokens = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens]
         print(f"Predicted (train) tokens: { ' '.join( predicted_tokens[0] ) }" )
         # See the result of encoding and decoding in EVAL (non-training) mode.
-        vae.eval()
-        reconstructed2, _, _, classification2 = vae(input_ids, attention_mask)
+        # vae.eval()
+        reconstructed2 = vae.decode_infer( z, input_ids.size(1) )
+        # reconstructed2, _, _, classification2 = vae(input_ids, attention_mask)
         tokens2 = vae.logits_to_tokens( reconstructed2 )
         predicted_tokens2 = [vae.tokenizer.convert_ids_to_tokens(ids) for ids in tokens2]
         print(f"Predicted (eval) tokens:  { ' '.join( predicted_tokens2[0] ) }" )
+        
         vae.train()
         
         # Predicted classification
-        print( f"Class: Expected {rejected.item()}, Training {classification.item():.2f}, Eval {classification2.item():.2f}")
+        # print( f"Class: Expected {rejected.item()}, Training {classification.item():.2f}, Eval {classification2.item():.2f}")
     except KeyboardInterrupt as e:
         print( "WBS: Program interrupted, dropping to debug console.  Type 'c' to resume.")
         import pdb; pdb.set_trace()
