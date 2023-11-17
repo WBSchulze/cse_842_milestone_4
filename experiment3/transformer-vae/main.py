@@ -17,18 +17,18 @@ model_name = 'bert-base-uncased'
 latent_dim = 512            # Dimension of latent space the VAE encodes to
 
 # Training constants
-num_epochs = 2000
+num_epochs = 5000
 learning_rate = 1e-5
 alpha = 0.5                 # Weight for reconstruction loss
-beta = 13.5                 # Weight for KL divergence
+beta = 0.1                  # Weight for KL divergence
 annealing_interval = 10     # Increment beta every 10 epochs
-beta_increment = 0.675      # Increment beta by this amount every annealing_interval epochs
-gamma = 207.5               # Weight for classification loss
+beta_increment = 0.1        # Increment beta by this amount every annealing_interval epochs
+gamma = 15                  # Weight for classification loss
 
 # Dev/debug constants
-training_dataset_size = 3
-text_start_index = 25       # Start at the 25th token to get past the "As an AI language model, I cannot..." part
-text_length = 64
+training_dataset_size = 50
+text_start_index = 0        # Start at the 25th token to get past the "As an AI language model, I cannot..." part
+text_length = 128
 
 # Set randomness to be fixed for reproducibility
 set_fixed_randomness(seed=seed)
@@ -43,7 +43,7 @@ optimizer = torch.optim.Adam(vae.parameters(), lr=learning_rate)
 X, y = preprocess_data('all_hand_labeled.json', 'response')
 X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
 texts =   [X_train[i][text_start_index:text_length] for i in range(len(X_train))][:training_dataset_size]
-print(f"{len(texts)} texts, example: {texts[0]}")
+print(f"{len(texts)} texts, example:\n{texts[0]}")
 classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
 dataset = CustomDataset(texts, classes, vae.tokenizer, max_length=max_tokenized_length)
 dataloader = DataLoader(dataset, batch_size=min(2, len(dataset)), shuffle=True, drop_last=False)
@@ -86,9 +86,9 @@ for epoch in range(num_epochs):
     # Forward pass example
     input_ids, attention_mask, rejected = next(iter(dataloader))
     # Dataloader gives us a batch but we just want one sample for now.
-    input_ids, attention_mask, rejected = ( input_ids[:1].to(device), 
-                                            attention_mask[:1].to(device), 
-                                            rejected[:1].to(device) )
+    input_ids, attention_mask, rejected = ( input_ids[1:2].to(device), 
+                                            attention_mask[1:2].to(device), 
+                                            rejected[1:2].to(device) )
     reconstructed, mu, logvar, classification = vae(input_ids, attention_mask)
 
     # Convert logits to probabilities and tokens

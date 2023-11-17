@@ -50,17 +50,29 @@ class TransformerVAE(nn.Module):
 
     def logits_to_tokens( self, logits ):
         return torch.argmax( logits, dim=2)
-        
 
     def forward(self, input_ids, attention_mask):
         mu, logvar = self.encode(input_ids, attention_mask)
         z = self.reparameterize(mu, logvar)
-        rejected = self.sigmoid(self.rejection_classifier( z ))
+        rejected = self.sigmoid(self.rejection_classifier(z))
         input_seq_len = input_ids.size(1)
-        # During training, when calling the decode method
         reconstructed = self.decode(z, input_seq_len, temperature=0.7)
 
+        # Convert input_ids to tokens
+        input_tokens = [self.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
+
+        # Convert reconstructed to tokens
+        # Assuming reconstructed is logits and you have a method to convert them to tokens
+        reconstructed_tokens = [self.tokenizer.convert_ids_to_tokens(ids) for ids in self.logits_to_tokens(reconstructed)]
+
+        # Printing input and predicted tokens
+        for i in range(len(input_tokens)):
+            print(f"1111Input tokens: {input_tokens[i]}")
+            print(f"1111Predicted tokens: {reconstructed_tokens[i]}")
+            print()
+
         return reconstructed, mu, logvar, rejected
+
     
     def to(self, device):
         super().to(device)
