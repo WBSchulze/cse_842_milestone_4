@@ -2,7 +2,8 @@ import json
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset
+import torch
+from torch.utils.data import Dataset, DataLoader
 
 class CustomDataset(Dataset):
     def __init__(self, texts, rejected, tokenizer, max_length):
@@ -25,6 +26,9 @@ def preprocess_data(file_path, text_source):
         data = json.load(file)
     df = pd.DataFrame(data)
 
+    # Filter out unwanted columns
+    df = df.drop(columns=['finish_reason'])
+
     # Filter out unwanted classes
     df = df.loc[~df['tone'].isin(['incoherent', 'dontknow'])].copy()
 
@@ -36,7 +40,7 @@ def preprocess_data(file_path, text_source):
     X = df[text_source].tolist()
     rejected = np.array( df['tone'].tolist() )
 
-    return X, rejected
+    return X, rejected, df
 
 # Define how to split the data into train/val/test.
 def split_data(X, y):
@@ -45,3 +49,16 @@ def split_data(X, y):
     X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=0.5, random_state=0)
     
     return X_train, X_val, X_test, y_train, y_val, y_test
+
+def load_data(text_start_index, text_length, training_dataset_size, max_tokenized_length, tokenizer):
+    # Load and preprocess data, then setup the dataloader.
+    X, y, df = preprocess_data('all_hand_labeled.json', 'response')
+    print(df, '\n')
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
+    texts =   [X_train[i][text_start_index:text_length] for i in range(len(X_train))][:training_dataset_size]
+    print(f"Using {len(texts)} texts.\n")#, example:\n{texts[0]}")
+    classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
+    dataset = CustomDataset(texts, classes, tokenizer, max_length=max_tokenized_length)
+    dataloader = DataLoader(dataset, batch_size=min(16, len(dataset)), shuffle=True, drop_last=False)
+
+    return dataloader

@@ -1,0 +1,8 @@
+Ensure the shapes of the data passed to the reconstruction loss (cross entropy) are correct.
+- for example, make sure the batches are correctly expanded.
+
+Keep an eye on the learning rate -- if only one sample is being reconstructed, it may be too high.
+
+Use layer norms at each layer to ensure the distribution is similar among them when the parameters are updated, and not a "moving target".
+
+Use a weighted loss to ensure the loss functions are balanced.

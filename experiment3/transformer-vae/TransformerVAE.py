@@ -4,21 +4,36 @@ import torch.nn.functional as F
 from torch import nn
 
 class TransformerVAE(nn.Module):
-    def __init__(self, model_name, latent_dim):
+    def __init__(self, model_name, latent_dim, dropout_rate=0.1):
         super(TransformerVAE, self).__init__()
         self.encoder = AutoModel.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-        # Define the mean and log-variance layers for the latent space
-        self.fc_mu = nn.Linear(self.encoder.config.hidden_size, latent_dim)
-        self.fc_logvar = nn.Linear(self.encoder.config.hidden_size, latent_dim)
+        # Dropout layer
+        self.dropout = nn.Dropout(dropout_rate)
+
+        # Define the mean and log-variance layers for the latent space with dropout
+        self.fc_mu = nn.Sequential(
+            nn.Linear(self.encoder.config.hidden_size, latent_dim),
+            self.dropout
+        )
+        self.fc_logvar = nn.Sequential(
+            nn.Linear(self.encoder.config.hidden_size, latent_dim),
+            self.dropout
+        )
 
         # Add a linear layer to map hidden states to the vocabulary size
         self.linear_layer = nn.Linear(self.encoder.config.hidden_size, self.tokenizer.vocab_size)
 
-        # 1 dimension: rejected or not
-        self.rejection_classifier = nn.Linear( latent_dim, 1 )
+        # Sigmoid activation
         self.sigmoid = nn.Sigmoid()
+
+        # Classifier for rejection with dropout
+        self.rejection_classifier = nn.Sequential(
+            nn.Linear(latent_dim, 1),
+            self.dropout,
+            self.sigmoid
+        )
 
         # Decoder can be another transformer or a different architecture
         self.decoder = AutoModel.from_pretrained(model_name)
@@ -58,21 +73,7 @@ class TransformerVAE(nn.Module):
         input_seq_len = input_ids.size(1)
         reconstructed = self.decode(z, input_seq_len, temperature=0.7)
 
-        # Convert input_ids to tokens
-        input_tokens = [self.tokenizer.convert_ids_to_tokens(ids) for ids in input_ids]
-
-        # Convert reconstructed to tokens
-        # Assuming reconstructed is logits and you have a method to convert them to tokens
-        reconstructed_tokens = [self.tokenizer.convert_ids_to_tokens(ids) for ids in self.logits_to_tokens(reconstructed)]
-
-        # Printing input and predicted tokens
-        for i in range(len(input_tokens)):
-            print(f"1111Input tokens: {input_tokens[i]}")
-            print(f"1111Predicted tokens: {reconstructed_tokens[i]}")
-            print()
-
         return reconstructed, mu, logvar, rejected
-
     
     def to(self, device):
         super().to(device)
