@@ -50,12 +50,12 @@ def split_data(X, y):
     
     return X_train, X_val, X_test, y_train, y_val, y_test
 
-def load_data(text_start_index, text_length, training_dataset_size, max_tokenized_length, tokenizer):
+def load_data(text_start_index, training_dataset_size, max_tokenized_length, tokenizer):
     # Load and preprocess data, then setup the dataloader.
     X, y, df = preprocess_data('all_hand_labeled.json', 'response')
     print(df, '\n')
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
-    texts =   [X_train[i][text_start_index:text_length] for i in range(len(X_train))][:training_dataset_size]
+    texts =   [X_train[i][text_start_index:] for i in range(len(X_train))][:training_dataset_size]
     print(f"Using {len(texts)} texts.\n")#, example:\n{texts[0]}")
     classes = torch.tensor( [ 1. ] * 50 ).float().reshape( ( -1, 1 ) )
     dataset = CustomDataset(texts, classes, tokenizer, max_length=max_tokenized_length)

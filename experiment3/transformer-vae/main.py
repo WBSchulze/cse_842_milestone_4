@@ -9,14 +9,14 @@ set_fixed_randomness(seed=42)
 
 # Model constants
 model_name = 'bert-base-uncased'
-latent_dim = 512
+latent_dim = 2048
 
 # Training constants
-num_epochs              = 5000
+num_epochs              = 50000
 learning_rate           = 1e-6
-recon_weight            = 0.5
-kl_weight, kl_increment = 0.1, 0.01
-classification_weight   = 15
+recon_weight            = 1.0
+kl_weight, kl_increment = 0.0, 0.0
+classification_weight   = 0
 
 # Define model and optimizer
 device = get_device()
@@ -25,9 +25,8 @@ optimizer = torch.optim.Adam(vae.parameters(), lr=learning_rate, weight_decay=1e
 
 dataloader = load_data(
     text_start_index        = 0,
-    text_length             = 64,
-    training_dataset_size   = 16,
-    max_tokenized_length    = 16,
+    training_dataset_size   = 2,
+    max_tokenized_length    = 8,
     tokenizer               = vae.tokenizer
 )
 
