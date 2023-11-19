@@ -5,19 +5,22 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 class CustomDataset(Dataset):
-    def __init__(self, texts, rejected, tokenizer, max_length):
+    def __init__(self, texts, rejected, tokenizer):
         self.texts = texts
         self.rejected = rejected
         self.tokenizer = tokenizer
-        self.max_length = max_length
+        self._tokenized = dict()
 
     def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
-        text = self.texts[idx]
-        inputs = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.max_length, return_tensors="pt")
-        return inputs.input_ids.squeeze(0), inputs.attention_mask.squeeze(0), self.rejected[idx]
+        if idx not in self._tokenized:
+            text = self.texts[idx]
+            tokenized = self.tokenizer( text, return_tensors="pt")
+            self._tokenized[idx] = tokenized.input_ids.squeeze(0)
+        return self._tokenized[idx], self.rejected[idx]
+
 
 # Define how to load and preprocess the data.
 def preprocess_data(file_path, text_source):
