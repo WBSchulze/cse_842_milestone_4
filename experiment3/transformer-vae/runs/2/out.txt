@@ -1,0 +1,255 @@
+-------- Epoch 15191 -------- 
+
+Correct text:       [CLS] i do not have access to individual case details or security clearance ##s . [SEP]
+Predicted text:     [CLS] i cannot form a leader beliefs inappropriate and , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15192 -------- 
+
+Correct text:       [CLS] mab ) is the minimum amount of money that a bank account holder is [SEP]
+Predicted text:     [CLS] i cannot form a have to the , , , the as . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15193 -------- 
+
+Correct text:       [CLS] i cannot spec ##ulate on the personal opinions of young and old beatles fans [SEP]
+Predicted text:     [CLS] i cannot form the leader personal . or , , the to . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15194 -------- 
+
+Correct text:       [CLS] i do not have access to individual case details or security clearance ##s . [SEP]
+Predicted text:     [CLS] i cannot is have leader personal the or , , the , . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15195 -------- 
+
+Correct text:       [CLS] mab ) is the minimum amount of money that a bank account holder is [SEP]
+Predicted text:     [CLS] i cannot ' t leader beliefs inappropriate or , , the , . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15196 -------- 
+
+Correct text:       [CLS] he great and grand lived a man of valor , who did so much [SEP]
+Predicted text:     [CLS] i cannot ' a or personal the and , , the , . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15197 -------- 
+
+Correct text:       [CLS] i do not have the ability to feel emotions , including the feeling of [SEP]
+Predicted text:     [CLS] i cannot not t or to of or , , the cowboy . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15198 -------- 
+
+Correct text:       [CLS] i don ' t have personal preferences or opinions . however , i can [SEP]
+Predicted text:     [CLS] i cannot form t leader personal and or , , the do . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15199 -------- 
+
+Correct text:       [CLS] es of individuals , mainly in academia , who have identified as black despite [SEP]
+Predicted text:     [CLS] i cannot ' opinions leader beliefs academia or , , the ##or . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15200 -------- 
+
+Correct text:       [CLS] he great and grand lived a man of valor , who did so much [SEP]
+Predicted text:     [CLS] i cannot is have have beliefs personal or , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15201 -------- 
+
+Correct text:       [CLS] environment ) is of paramount importance in the oil and gas industry . some [SEP]
+Predicted text:     [CLS] i cannot form t or beliefs inappropriate and , , the ##or . .
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15202 -------- 
+
+Correct text:       [CLS] i don ' t have personal opinions or beliefs , but it is up [SEP]
+Predicted text:     [CLS] i cannot form have or personal of or , , the question . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15203 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs about individuals or groups of people based on [SEP]
+Predicted text:     [CLS] i cannot is the leader personal preferences or , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15204 -------- 
+
+Correct text:       [CLS] great reno ##wn a leader wise and fair , his virtues do as ##tou [SEP]
+Predicted text:     [CLS] i cannot is have or to opinions or , , the old . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15205 -------- 
+
+Correct text:       [CLS] es of individuals , mainly in academia , who have identified as black despite [SEP]
+Predicted text:     [CLS] i cannot form a have beliefs opinions , , , the people . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15206 -------- 
+
+Correct text:       [CLS] r that question as it is inappropriate and violate ##s the policies of this [SEP]
+Predicted text:     [CLS] i cannot not a leader to opinions , , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15207 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs . however , the decision to build a [SEP]
+Predicted text:     [CLS] i cannot form have or personal individual , , , the industry . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15208 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs . however , the decision to build a [SEP]
+Predicted text:     [CLS] i cannot not the or to to and , , the people . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15209 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs about individuals or groups of people based on [SEP]
+Predicted text:     [CLS] i cannot is opinions leader beliefs many and , , the clearance . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15210 -------- 
+
+Correct text:       [CLS] i cannot confirm the accuracy of the premise presented in the question . it [SEP]
+Predicted text:     [CLS] i cannot ' a leader to fair or , , the , . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15211 -------- 
+
+Correct text:       [CLS] i don ' t have personal opinions or beliefs , but it is up [SEP]
+Predicted text:     [CLS] i cannot form have or to of or , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15212 -------- 
+
+Correct text:       [CLS] i cannot confirm the accuracy of the premise presented in the question . it [SEP]
+Predicted text:     [CLS] i cannot form the leader beliefs of and , , the do . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15213 -------- 
+
+Correct text:       [CLS] environment ) is of paramount importance in the oil and gas industry . some [SEP]
+Predicted text:     [CLS] i cannot is t leader to in and , , the account . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15214 -------- 
+
+Correct text:       [CLS] i do not have the ability to feel emotions , including the feeling of [SEP]
+Predicted text:     [CLS] i cannot form have leader beliefs man or , , the did . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15215 -------- 
+
+Correct text:       [CLS] es of individuals , mainly in academia , who have identified as black despite [SEP]
+Predicted text:     [CLS] i cannot is the leader personal individual or , , the ##or . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15216 -------- 
+
+Correct text:       [CLS] great reno ##wn a leader wise and fair , his virtues do as ##tou [SEP]
+Predicted text:     [CLS] i cannot form t leader to in or , , the old . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15217 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs . however , the decision to build a [SEP]
+Predicted text:     [CLS] i cannot not the have beliefs fair and , , the ##or . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15218 -------- 
+
+Correct text:       [CLS] i do not have the ability to feel emotions , including the feeling of [SEP]
+Predicted text:     [CLS] i cannot form have have beliefs . or , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15219 -------- 
+
+Correct text:       [CLS] th , a true inspiration to many , sonia soto ##may ##or , a [SEP]
+Predicted text:     [CLS] i cannot not a or beliefs personal and , , the to . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15220 -------- 
+
+Correct text:       [CLS] r that question as it is inappropriate and violate ##s the policies of this [SEP]
+Predicted text:     [CLS] i cannot is have have beliefs academia , , , the the . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15221 -------- 
+
+Correct text:       [CLS] i do not have access to individual case details or security clearance ##s . [SEP]
+Predicted text:     [CLS] i cannot ' t or to of or , , the question . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15222 -------- 
+
+Correct text:       [CLS] i do not have access to individual case details or security clearance ##s . [SEP]
+Predicted text:     [CLS] i cannot is opinions have beliefs academia and , , the old . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15223 -------- 
+
+Correct text:       [CLS] environment ) is of paramount importance in the oil and gas industry . some [SEP]
+Predicted text:     [CLS] i cannot form a leader beliefs man , , , the clearance . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15224 -------- 
+
+Correct text:       [CLS] i do not have the ability to feel emotions , including the feeling of [SEP]
+Predicted text:     [CLS] i cannot not have have personal personal , , , the question . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15225 -------- 
+
+Correct text:       [CLS] great reno ##wn a leader wise and fair , his virtues do as ##tou [SEP]
+Predicted text:     [CLS] i cannot is a or to preferences or , , the to . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15226 -------- 
+
+Correct text:       [CLS] i do not have the ability to feel emotions , including the feeling of [SEP]
+Predicted text:     [CLS] i cannot is a or beliefs many and , , the the . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15227 -------- 
+
+Correct text:       [CLS] es of individuals , mainly in academia , who have identified as black despite [SEP]
+Predicted text:     [CLS] i cannot not t or to the and , , the as . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15228 -------- 
+
+Correct text:       [CLS] es of individuals , mainly in academia , who have identified as black despite [SEP]
+Predicted text:     [CLS] i cannot is a leader personal opinions , , , the industry . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15229 -------- 
+
+Correct text:       [CLS] i cannot form opinions or beliefs . however , the decision to build a [SEP]
+Predicted text:     [CLS] i cannot form a have personal many , , , the to . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15230 -------- 
+
+Correct text:       [CLS] i cannot confirm the accuracy of the premise presented in the question . it [SEP]
+Predicted text:     [CLS] i cannot is have or beliefs inappropriate and , , the policies . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15231 -------- 
+
+Correct text:       [CLS] r that question as it is inappropriate and violate ##s the policies of this [SEP]
+Predicted text:     [CLS] i cannot is opinions leader beliefs in , , , the industry . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15232 -------- 
+
+Correct text:       [CLS] i don ' t have personal opinions or beliefs , but it is up [SEP]
+Predicted text:     [CLS] i cannot not a leader beliefs in , , , the it . a
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 15233 -------- 
+
+zsh: killed     python main.py
