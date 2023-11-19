@@ -1,0 +1,161 @@
+-------- Epoch 22531 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as an ai language man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22532 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] as wilson , a model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 22533 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] as wilson , a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.626).
+
+-------- Epoch 22534 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as wilson ai a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.623).
+
+-------- Epoch 22535 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow an , language model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.620).
+
+-------- Epoch 22536 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] as an , a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.623).
+
+-------- Epoch 22537 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as an ai language man of
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22538 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as wilson ai a model of
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22539 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as wilson , language model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22540 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow an , language model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.618).
+
+-------- Epoch 22541 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] as wilson , a model of
+Classification was: CORRECT (Expected class 1.0, got class 0.625).
+
+-------- Epoch 22542 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow wilson ai language model of
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 22543 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as wilson , a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.619).
+
+-------- Epoch 22544 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow an ai a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 22545 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow an , language model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.623).
+
+-------- Epoch 22546 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow an , a model of
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 22547 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow an , language man of
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22548 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow an , language man of
+Classification was: CORRECT (Expected class 1.0, got class 0.621).
+
+-------- Epoch 22549 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as wilson , language man of
+Classification was: CORRECT (Expected class 1.0, got class 0.623).
+
+-------- Epoch 22550 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow an ai language model ,
+Classification was: CORRECT (Expected class 1.0, got class 0.622).
+
+-------- Epoch 22551 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow wilson , a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.620).
+
+-------- Epoch 22552 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow wilson ai language man of
+Classification was: CORRECT (Expected class 1.0, got class 0.624).
+
+-------- Epoch 22553 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow an , a man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.628).
+
+-------- Epoch 22554 -------- 
+
+Correct text:       [CLS] as an ai language model , [SEP]
+Predicted text:     [CLS] woodrow wilson , language man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.626).
+
+-------- Epoch 22555 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow an ai a man of
+Classification was: CORRECT (Expected class 1.0, got class 0.618).
+
+-------- Epoch 22556 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] as an ai a model of
+Classification was: CORRECT (Expected class 1.0, got class 0.619).
+
+-------- Epoch 22557 -------- 
+
+Correct text:       [CLS] woodrow wilson , a man of [SEP]
+Predicted text:     [CLS] woodrow wilson ai language man ,
+Classification was: CORRECT (Expected class 1.0, got class 0.623).
