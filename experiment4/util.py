@@ -12,9 +12,27 @@ def save( epoch, model, optimizer, path = 'model.pt' ):
     
 def load( model, optimizer, path = 'model.pt' ):
     checkpoint = torch.load( path )
-    model.load_state_dict(checkpoint['model_state_dict'])
+    try:
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print( "MODEL LOADED SUCCESSFULLY.")
+    except RuntimeError as e:
+        print( "MODEL LOAD FAILURE.  BUCKLE UP!")
+        # Convert unidirectional GRU to bidirectional
+        d = checkpoint['model_state_dict']
+        for level in ['l0', 'l1', 'l2']:
+            for kind in ['weight', 'bias']:
+                for dest in ['ih', 'hh']:
+                    s = f'encoder.{kind}_{dest}_{level}'
+                    d[f'{s}_reverse'] = d[s]
+        # Handle forward and reverse directional GRU passes
+        for level in ['l1', 'l2']:
+            for kind in ['weight']:
+                for dest in ['ih']:
+                    s = f'encoder.{kind}_{dest}_{level}'
+                    d[s] = torch.cat( ( d[s], d[s] ), dim = -1 )
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
+    import pdb; pdb.set_trace()
     return epoch
 
 def cosine_annealing( iEpoch, period ):

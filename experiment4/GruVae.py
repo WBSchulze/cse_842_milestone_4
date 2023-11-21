@@ -9,7 +9,8 @@ class GruVae(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
         self.embedding = AutoModel.from_pretrained('bert-base-uncased').embeddings
         self.fc_hidden = nn.Linear( 768, latent_dim )
-        self.encoder = nn.GRU( latent_dim, latent_dim, num_layers )
+        self.encoder = nn.GRU( latent_dim, latent_dim, num_layers, 
+                               bidirectional = True, dropout = 0.0 )
 
         # Define the mean and log-variance layers for the latent space
         self.fc_mu = nn.Linear(latent_dim, latent_dim)
@@ -20,7 +21,8 @@ class GruVae(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.bce_loss = nn.BCELoss()
 
-        self.decoder = nn.GRU( latent_dim, latent_dim, num_layers )
+        self.decoder = nn.GRU( latent_dim, latent_dim, num_layers,
+                               bidirectional = False, dropout = 0.1 )
         # Add a linear layer to map hidden states to the vocabulary size
         self.fc_vocab = nn.Linear(latent_dim, self.tokenizer.vocab_size)
 
@@ -42,10 +44,8 @@ class GruVae(nn.Module):
 
     def encode( self, converted ):
         # Reversing encoding order improves performance per
-        # "Generating sentences from a continuous space" paper.
-        reversed = converted.flip( 0 )
         # Encoder returns output, hidden state (unused)
-        encoded, _ = self.encoder( reversed )
+        encoded, _ = self.encoder( converted )
         cls_encoded = encoded[-1:,:]
         mu = self.fc_mu(cls_encoded)
         logvar = self.fc_logvar(cls_encoded)
@@ -60,10 +60,11 @@ class GruVae(nn.Module):
         # Dimensions: token, hidden dimension.
         # Replace default [CLS] encoding with z.
         # Don't want an extra step after last output token.
-        in_sequence = torch.cat( ( z, converted[1:-1,:] ) )
         # Decoder returns output, final hidden states (unused)
-        hidden, _ = self.decoder( in_sequence )
-        logits = self.fc_vocab( hidden )
+        hidden_states = torch.cat( (z,z,z), dim = 0 )
+        input_seq = converted[:-1,:]
+        decoded, _ = self.decoder( input_seq, hidden_states )
+        logits = self.fc_vocab( decoded )
         return logits
 
     def decode_eval(self, z, max_seq_len = 16 ):
