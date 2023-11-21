@@ -82,11 +82,11 @@ lws_classification = []
 epochStartTime = datetime.datetime.now()
 batch_loss = None
 initial_epoch = 0
-try: 
-     initial_epoch = load( model, optimizer )
-     print( f"Loaded saved model at epoch {initial_epoch}.")
-except FileNotFoundError:
-     print( f"No saved model.  Starting from epoch {initial_epoch}.")
+# try: 
+#      initial_epoch = load( model, optimizer )
+#      print( f"Loaded saved model at epoch {initial_epoch}.")
+# except FileNotFoundError:
+#      print( f"No saved model.  Starting from epoch {initial_epoch}.")
 
 for epoch in range(initial_epoch, initial_epoch + num_epochs):
     annealing_factor = engineered_factor( epoch, annealing_epoch_period )

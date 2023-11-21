@@ -10,35 +10,20 @@ def save( epoch, model, optimizer, path = 'model.pt' ):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict() }, path)
     
+
 def load( model, optimizer, path = 'model.pt' ):
     checkpoint = torch.load( path )
-    try:
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print( "MODEL LOADED SUCCESSFULLY.")
-    except RuntimeError as e:
-        print( "MODEL LOAD FAILURE.  BUCKLE UP!")
-        # Convert unidirectional GRU to bidirectional
-        d = checkpoint['model_state_dict']
-        for level in ['l0', 'l1', 'l2']:
-            for kind in ['weight', 'bias']:
-                for dest in ['ih', 'hh']:
-                    s = f'encoder.{kind}_{dest}_{level}'
-                    d[f'{s}_reverse'] = d[s]
-        # Handle forward and reverse directional GRU passes
-        for level in ['l1', 'l2']:
-            for kind in ['weight']:
-                for dest in ['ih']:
-                    s = f'encoder.{kind}_{dest}_{level}'
-                    d[s] = torch.cat( ( d[s], d[s] ), dim = -1 )
+    model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
-    import pdb; pdb.set_trace()
     return epoch
+
 
 def cosine_annealing( iEpoch, period ):
     epDivPeriod = ( iEpoch * 2 * np.pi ) / period
     sinusoid = 0.5 - 0.5 * np.cos( epDivPeriod )
     return sinusoid
+
 
 def engineered_factor( iEpoch, period ):
     """period / 2 epochs of 0.  Period / 2 epochs rising.
@@ -51,7 +36,8 @@ def engineered_factor( iEpoch, period ):
         return cosine_annealing( normalized - partPeriod, 2 * partPeriod )
     else:
         return 1
-    
+
+
 def engineered_factor_switching( iEpoch, period ):
     this_factor = engineered_factor( iEpoch, period )
     last_factor = engineered_factor( iEpoch - 1, period )
@@ -59,10 +45,12 @@ def engineered_factor_switching( iEpoch, period ):
         return True
     return False
 
+
 def set_fixed_randomness(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
 
 def plot_losses(epochs, recon_losses, kl_divergences, bce_losses,
                 lws_overall = None, lws_KL = None, lws_classification = None ):
