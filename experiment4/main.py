@@ -35,7 +35,7 @@ device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 print(f"Using device: {device}")
 model = GruVae( latent_dim, gru_layers ).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor = 0.5, threshold = 0, verbose = True )
+lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor = 0.5, patience = 5, verbose = True )
 
 # Load and preprocess labeled refusals into train/val/test.
 X, y = preprocess_data('all_hand_labeled.json', 'prompt')
@@ -65,8 +65,7 @@ classes = torch.cat( ( classes_refuse, classes_comply ), dim = 0 )[shuffle_vecto
 # classes = torch.tensor( y_train ).float().reshape( ( -1, 1 ) )
 #------------------------------------------------
 allTexts = '\n'.join( texts )
-print(f"{len(texts)} texts:" )
-print( allTexts )
+print(f"{len(texts)} texts." )
 
 dataset = CustomDataset(texts, classes, model.tokenizer)
 dataloader = DataLoader(dataset, batch_size = 1, shuffle=True, drop_last=False)
@@ -136,8 +135,7 @@ for epoch in range(initial_epoch, initial_epoch + num_epochs):
     #==================================================================
     # Adjust hyperparameters for next epoch
     #------------------------------------------------------------------
-
-        # Reset "best value" if this is coming off a KL/classification cycle.
+    # Reset "best value" if this is coming off a KL/classification cycle.
     if engineered_factor_switching( epoch, annealing_epoch_period ):
             print( f"Resetting learning rate scheduler's best loss value at epoch {epoch}.")
             lr_scheduler.best = float( 'inf' )
