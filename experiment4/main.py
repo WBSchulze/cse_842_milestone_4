@@ -3,6 +3,7 @@ import random
 
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from data_processing import CustomDataset, preprocess_data, split_data
 from GruVae import GruVae
@@ -18,57 +19,45 @@ gru_layers = 3              # Layers per GRU
 
 # Training constants
 num_epochs = 10000
-training_dataset_size = 500      # 517 rejected texts in current dataset
-learning_rate = 1e-2
+# training_dataset_size = 500     # 517 rejected texts in current dataset
+learning_rate = 1e-5
 lw_recon = 1                      # Weight for reconstruction loss
-lw_KL_max = 1                     # Weight for KL divergence
-lw_classification_max = 100       # Weight for classification loss
-annealing_epoch_period = 150      # How long the annealing cycle is.  Ideally a multiple of 3.
+lw_KL_max = 1e-1                  # Weight for KL divergence
+lw_classification_max = 1e-2      # Weight for classification loss
+annealing_epoch_period = 15       # How long the annealing cycle is.  Ideally a multiple of 3.
 batch_size = 10                   # How many samples the GRU processes between backprops.
 
 # Set randomness to be fixed for reproducibility
 set_fixed_randomness(seed=seed)
 
 # Define model and optimizer
-# Check if MPS is available and use it; otherwise, use CPU
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+# Check if MPS or CUDA is available and use them; otherwise, use CPU
+device = torch.device("cpu" )
+if torch.backends.mps.is_available():
+    device = torch.device( "mps" )
+elif torch.cuda.is_available():
+    device = torch.device( "cuda" )
 print(f"Using device: {device}")
+
 model = GruVae( latent_dim, gru_layers ).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor = 0.5, patience = 5, verbose = True )
+lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor = 0.1, patience = 2, verbose = True, min_lr = 1e-7 )
 
 # Load and preprocess labeled refusals into train/val/test.
-X, y = preprocess_data('all_hand_labeled.json', 'prompt')
-X_train, X_val, X_test, y_train, y_val, y_test = split_data(X, y)
+X, y, c = preprocess_data('quora_insincere_hand_labeled.json', 'prompt', 1.0 )
+X_train, X_val, X_test, y_train, y_val, y_test, c_train, c_val, c_test = split_data(X, y, c)
+X_train_01, y_train_01, c_train_01 = preprocess_data('quora_64k_bootstrapped.json', 'prompt', 0.1 )
 
-#------------------------------------------------
-# Use this for quick training with only refusals (easy)
-#------------------------------------------------
-texts_refuse =   [X_train[i] for i in range(len(X_train)) if y_train[i] == 1][:training_dataset_size]
-texts_comply =   [X_train[i] for i in range(len(X_train)) if y_train[i] == 0][:training_dataset_size]
-# For checking available texts:
-# texts_refuse =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 1] # 517 of these
-# texts_comply =   [X_train[i][:64] for i in range(len(X_train)) if y_train[i] == 0] # 847 of these
-# filter to short refusals
-# texts =   [X_train[i][text_start_index:text_length] for i in range(len(X_train))][:training_dataset_size]
-classes_refuse = torch.tensor( [ 1. ] * len( texts_refuse ) ).reshape( ( -1, 1 ) )
-classes_comply = torch.tensor( [ 0. ] * len( texts_comply ) ).reshape( ( -1, 1 ) )
-shuffle_vector = list( range( len( texts_refuse ) + len( texts_comply ) ) )
-random.shuffle( shuffle_vector )
-texts = [ ( texts_refuse + texts_comply )[iText] for iText in shuffle_vector ]
-classes = torch.cat( ( classes_refuse, classes_comply ), dim = 0 )[shuffle_vector].float()
-
-#------------------------------------------------
-# Use this for thorough training with both classes (hard)
-#------------------------------------------------
-# texts = X_train[:]
-# classes = torch.tensor( y_train ).float().reshape( ( -1, 1 ) )
-#------------------------------------------------
-allTexts = '\n'.join( texts )
-print(f"{len(texts)} texts." )
-
-dataset = CustomDataset(texts, classes, model.tokenizer)
-dataloader = DataLoader(dataset, batch_size = 1, shuffle=True, drop_last=False)
+datasets = [ CustomDataset(X_d, y_d, c_d, model.tokenizer)
+             for X_d, y_d, c_d 
+             in zip( ( X_train_01, 
+                      X_train, ),
+                     ( y_train_01, 
+                      y_train, ),
+                     ( c_train_01, 
+                      c_train, ) ) ]
+dataloaders = [ DataLoader(dataset, batch_size = 1, shuffle=True, drop_last=False) 
+                for dataset in datasets ]
 
 # Initialize lists to store losses for plotting
 recon_losses = []
@@ -82,11 +71,11 @@ lws_classification = []
 epochStartTime = datetime.datetime.now()
 batch_loss = None
 initial_epoch = 0
-# try: 
-#      initial_epoch = load( model, optimizer )
-#      print( f"Loaded saved model at epoch {initial_epoch}.")
-# except FileNotFoundError:
-#      print( f"No saved model.  Starting from epoch {initial_epoch}.")
+try: 
+     initial_epoch = load( model, optimizer )
+     print( f"Loaded saved model at epoch {initial_epoch}.")
+except FileNotFoundError:
+     print( f"No saved model.  Starting from epoch {initial_epoch}.")
 
 for epoch in range(initial_epoch, initial_epoch + num_epochs):
     annealing_factor = engineered_factor( epoch, annealing_epoch_period )
@@ -107,30 +96,30 @@ for epoch in range(initial_epoch, initial_epoch + num_epochs):
     epoch_bce_loss = 0.0
     num_batches = 0
     
-    for input_ids, rejected in dataloader:
-        input_ids, rejected = input_ids[0].to(device), rejected[0].to(device)
+    for dataloader in dataloaders:
+        for input_ids, rejected, confidence in dataloader:
+            input_ids, rejected = input_ids[0].to(device), rejected[0].to(device)
+            logits, mu, logvar, classification = model(input_ids)
+            recon_loss = model.recon_loss(logits, input_ids)
+            kl_div = model.kl_div_loss( mu, logvar)
+            classification_loss = model.classification_loss( rejected, classification )
+            if batch_loss is None:
+                batch_loss = lw_recon * recon_loss + lw_KL * kl_div + lw_classification * classification_loss
+            else:
+                batch_loss += lw_recon * recon_loss + lw_KL * kl_div + lw_classification * classification_loss
 
-        logits, mu, logvar, classification = model(input_ids)
-        recon_loss = model.recon_loss(logits, input_ids)
-        kl_div = model.kl_div_loss( mu, logvar)
-        classification_loss = model.classification_loss( rejected, classification )
-        if batch_loss is None:
-            batch_loss = lw_recon * recon_loss + lw_KL * kl_div + lw_classification * classification_loss
-        else:
-            batch_loss += lw_recon * recon_loss + lw_KL * kl_div + lw_classification * classification_loss
+            epoch_recon_loss += recon_loss.item()
+            epoch_kl_div += kl_div.item()
+            epoch_bce_loss += classification_loss.item() * confidence.item()
 
-        epoch_recon_loss += recon_loss.item()
-        epoch_kl_div += kl_div.item()
-        epoch_bce_loss += classification_loss.item()
+            num_batches += 1
 
-        num_batches += 1
-
-        if num_batches % batch_size == 0:
-            epoch_loss += batch_loss.item()
-            batch_loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-            batch_loss = None
+            if num_batches % batch_size == 0:
+                epoch_loss += batch_loss.item()
+                batch_loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                batch_loss = None
 
     #==================================================================
     # Adjust hyperparameters for next epoch
@@ -143,11 +132,11 @@ for epoch in range(initial_epoch, initial_epoch + num_epochs):
         lr_scheduler.step( epoch_recon_loss )
     epochTime = datetime.datetime.now() - epochStartTime
     epochStartTime = datetime.datetime.now()
-    print(f"\nEpoch {epoch + 1:3}, Time taken {epochTime}, Recon Loss: {epoch_recon_loss/num_batches:.3e}, KL Div: {epoch_kl_div/num_batches:.3e}, Classification Loss: {epoch_bce_loss/num_batches:.3e}")
+    print(f"\nEpoch {epoch + 1} ({num_batches} batches), Time: {epochTime}, Recon Loss: {epoch_recon_loss/num_batches:.3e}, KL Div: {epoch_kl_div/num_batches:.3e}, Classification Loss: {epoch_bce_loss/num_batches:.3e}")
 
     # Forward pass example, plotting
     #==================================================================
-    input_ids, rejected = next(iter(dataloader))
+    input_ids, rejected, _ = next(iter(dataloader))
     # Dataloader gives us a batch but we just want one sample for now.
     input_ids, rejected = ( input_ids[0].to(device), 
                              rejected[0].to(device) )
