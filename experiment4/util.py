@@ -2,6 +2,32 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
+import torchtext
+
+def bleu_eval( model, test_loader ):
+    old_training = model.training
+    model.eval()
+
+    input_texts = []
+    output_texts = []
+    for input_ids, rejected, confidence in test_loader:
+        input_ids = input_ids[0]
+        input_tokens = model.tokenizer.convert_ids_to_tokens( input_ids[1:] )
+        input_texts.append( input_tokens )
+
+        output_logits, mu, logvar, classification = model( input_ids )
+        output_ids = model.logits_to_tokens( output_logits )
+        output_tokens = model.tokenizer.convert_ids_to_tokens(output_ids)
+        # For some reason, input_texts needs to be 2D but output_texts needs to be 3D.
+        # I guess you can consider many outputs ("translations") for each input?
+        output_texts.append( [ output_tokens ] )
+
+    score = torchtext.data.metrics.bleu_score( input_texts, output_texts )
+
+    if old_training:
+        model.train()
+    
+    return score
 
 
 def save( epoch, model, optimizer, path = 'model.pt' ):

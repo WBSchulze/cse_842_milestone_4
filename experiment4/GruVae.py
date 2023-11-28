@@ -47,19 +47,20 @@ class GruVae(nn.Module):
         # tokens_str = self.tokenizer.convert_ids_to_tokens(input_ids)
         # debug_txt = ' '.join( [ f"{t[1]}({str(t[0].item())})" for t in zip( input_ids, tokens_str ) ] ) 
         # print( f"Input text: {debug_txt}" )
-
         embedded = self.embedding( input_ids.unsqueeze(0) ).squeeze(0)
         converted = self.converter( embedded )
         mu, logvar = self.encode( converted )
         z = self.reparameterize( mu, logvar )
         rejected = self.sigmoid(self.fc_rejection( z.squeeze() ))
+        
         if self.training:
             # reconstructed = self.decode_eval( z, len( input_ids ) )
             reconstructed = self.decode_train( z, converted )
             # reconstructed = self.decode_debug( z, converted )
         else:
             # WBS: Not yet implemented
-            reconstructed = self.decode_eval( z, len( input_ids ) )
+            # reconstructed = self.decode_eval( z, len( input_ids ) )
+            reconstructed = self.decode_train( z, converted )
         return reconstructed, mu, logvar, rejected
 
 
@@ -89,6 +90,7 @@ class GruVae(nn.Module):
         decoded, _ = self.decoder( input_seq, hidden_states )
         logits = self.fc_vocab( decoded )
         return logits
+
 
     def decode_debug(self, z, converted ):
         self.eval()

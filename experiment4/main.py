@@ -8,7 +8,7 @@ from tqdm import tqdm
 from data_processing import CustomDataset, preprocess_data, split_data
 from GruVae import GruVae
 from util import ( set_fixed_randomness, plot_losses, engineered_factor, 
-                  engineered_factor_switching, save, load )
+                  engineered_factor_switching, save, load, bleu_eval )
 
 # General constants
 seed = 42
@@ -48,7 +48,7 @@ X, y, c = preprocess_data('quora_insincere_hand_labeled.json', 'prompt', 1.0 )
 X_train, X_val, X_test, y_train, y_val, y_test, c_train, c_val, c_test = split_data(X, y, c)
 X_train_01, y_train_01, c_train_01 = preprocess_data('quora_64k_bootstrapped.json', 'prompt', 0.1 )
 
-datasets = [ CustomDataset(X_d, y_d, c_d, model.tokenizer)
+datasets = [ CustomDataset(X_d, y_d, c_d, model.tokenizer, device = device )
              for X_d, y_d, c_d 
              in zip( ( X_train_01, 
                       X_train, ),
@@ -58,6 +58,8 @@ datasets = [ CustomDataset(X_d, y_d, c_d, model.tokenizer)
                       c_train, ) ) ]
 dataloaders = [ DataLoader(dataset, batch_size = 1, shuffle=True, drop_last=False) 
                 for dataset in datasets ]
+val_loader = DataLoader( CustomDataset( X_val, y_val, c_val, model.tokenizer, device = device  ), batch_size = 1 )
+test_loader = DataLoader( CustomDataset( X_test, y_test, c_test, model.tokenizer, device = device  ), batch_size = 1 )
 
 # Initialize lists to store losses for plotting
 recon_losses = []
@@ -135,6 +137,8 @@ for epoch in range(initial_epoch, initial_epoch + num_epochs):
     epochTime = datetime.datetime.now() - epochStartTime
     epochStartTime = datetime.datetime.now()
     print(f"\nEpoch {epoch + 1} ({num_batches} batches), Time: {epochTime}, Recon Loss: {epoch_recon_loss/num_batches:.3e}, KL Div: {epoch_kl_div/num_batches:.3e}, Classification Loss: {epoch_bce_loss/num_batches:.3e}")
+    print( f"BLEU for Hand labeled training: {bleu_eval( model, dataloaders[1] ):.4f}" )
+    print( f"BLEU for Validation set: {bleu_eval( model, val_loader ):.4f}" )
 
     # Forward pass example, plotting
     #==================================================================

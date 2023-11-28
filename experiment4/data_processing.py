@@ -6,11 +6,12 @@ from torch.utils.data import Dataset
 import torch
 
 class CustomDataset(Dataset):
-    def __init__(self, texts, rejected, confidence, tokenizer):
+    def __init__(self, texts, rejected, confidence, tokenizer, device = 'cpu'):
         self.texts = texts
         self.rejected = rejected
         self.confidence = confidence
         self.tokenizer = tokenizer
+        self.device = device
         self._tokenized = dict()
 
     def __len__(self):
@@ -20,7 +21,7 @@ class CustomDataset(Dataset):
         if idx not in self._tokenized:
             text = self.texts[idx]
             tokenized = self.tokenizer( text, return_tensors="pt")
-            self._tokenized[idx] = tokenized.input_ids.squeeze(0)
+            self._tokenized[idx] = tokenized.input_ids.squeeze(0).to( self.device )
         return self._tokenized[idx], self.rejected[idx], self.confidence[idx]
 
 
