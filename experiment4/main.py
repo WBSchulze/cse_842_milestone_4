@@ -23,7 +23,7 @@ num_epochs = 10000
 learning_rate = 1e-5
 lw_recon = 1                      # Weight for reconstruction loss
 lw_KL_max = 1e-1                  # Weight for KL divergence
-lw_classification_max = 1e-2      # Weight for classification loss
+lw_classification_max = 1e-1      # Weight for classification loss
 annealing_epoch_period = 15       # How long the annealing cycle is.  Ideally a multiple of 3.
 batch_size = 10                   # How many samples the GRU processes between backprops.
 
@@ -78,7 +78,8 @@ except FileNotFoundError:
      print( f"No saved model.  Starting from epoch {initial_epoch}.")
 
 for epoch in range(initial_epoch, initial_epoch + num_epochs):
-    annealing_factor = engineered_factor( epoch, annealing_epoch_period )
+    # annealing_factor = engineered_factor( epoch, annealing_epoch_period )
+    annealing_factor = 1
     lw_KL = lw_KL_max * annealing_factor
     lw_classification = lw_classification_max * annealing_factor
     lws_overall.append( optimizer.param_groups[0]['lr'] )
@@ -125,11 +126,12 @@ for epoch in range(initial_epoch, initial_epoch + num_epochs):
     # Adjust hyperparameters for next epoch
     #------------------------------------------------------------------
     # Reset "best value" if this is coming off a KL/classification cycle.
-    if engineered_factor_switching( epoch, annealing_epoch_period ):
-            print( f"Resetting learning rate scheduler's best loss value at epoch {epoch}.")
-            lr_scheduler.best = float( 'inf' )
-    if ( annealing_factor == 0 ) or ( annealing_factor == 1 ):
-        lr_scheduler.step( epoch_recon_loss )
+    # if engineered_factor_switching( epoch, annealing_epoch_period ):
+    #         print( f"Resetting learning rate scheduler's best loss value at epoch {epoch}.")
+    #         lr_scheduler.best = float( 'inf' )
+    # if ( annealing_factor == 0 ) or ( annealing_factor == 1 ):
+    #     lr_scheduler.step( epoch_recon_loss )
+    lr_scheduler.step( epoch_recon_loss )
     epochTime = datetime.datetime.now() - epochStartTime
     epochStartTime = datetime.datetime.now()
     print(f"\nEpoch {epoch + 1} ({num_batches} batches), Time: {epochTime}, Recon Loss: {epoch_recon_loss/num_batches:.3e}, KL Div: {epoch_kl_div/num_batches:.3e}, Classification Loss: {epoch_bce_loss/num_batches:.3e}")
